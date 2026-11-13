@@ -1,0 +1,52 @@
+﻿@model List<InternalRequest_Management.Models.ChucDanh>
+@{
+    ViewData["Title"] = "Quản lý chức danh";
+    var soNguoi = (Dictionary<int, int>)ViewBag.SoNguoi;
+}
+<h3 class="mb-3">Quản lý chức danh</h3>
+
+@if (TempData["ThongBao"] != null)
+{
+    <div class="banner banner-ok">@TempData["ThongBao"]</div>
+}
+@if (TempData["Loi"] != null)
+{
+    <div class="banner banner-bad">@TempData["Loi"]</div>
+}
+
+<form asp-action="Create" method="post" class="row g-2 mb-3">
+    <div class="col-md-5">
+        <input name="tenChucDanh" class="form-control" placeholder="Tên chức danh mới, ví dụ: Phó phòng" maxlength="255" />
+    </div>
+    <div class="col-auto"><button type="submit" class="btn btn-primary">Thêm</button></div>
+</form>
+
+<table class="table table-bordered align-middle">
+    <thead class="table-light">
+        <tr>
+            <th>Tên chức danh</th>
+            <th class="text-center" style="width:140px">Số người giữ</th>
+            <th style="width:170px"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var c in Model)
+        {
+            int dem = soNguoi.TryGetValue(c.MaChucDanh, out var d) ? d : 0;
+            <tr>
+                <td>@c.TenChucDanh</td>
+                <td class="text-center">@dem</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@c.MaChucDanh" class="btn btn-sm btn-outline-primary">Sửa</a>
+                    @if (dem == 0)
+                    {
+                        <form asp-action="Xoa" asp-route-id="@c.MaChucDanh" method="post" class="d-inline"
+                              data-msg="Xóa chức danh &quot;@c.TenChucDanh&quot;?">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Xóa</button>
+                        </form>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

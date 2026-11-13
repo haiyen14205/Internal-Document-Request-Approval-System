@@ -1,0 +1,114 @@
+﻿@using InternalRequest_Management.Models
+@{
+    ViewData["Title"] = "Trang chủ";
+    bool laDeNghi = User.IsInRole("Người đề nghị");
+    bool laPheDuyet = User.IsInRole("Người phê duyệt");
+    bool laQuanTri = User.IsInRole("Quản trị viên");
+    string[] cacTrangThai = { TrangThaiHoSo.Nhap, TrangThaiHoSo.ChoDuyet, TrangThaiHoSo.ChoChinhSua,
+                              TrangThaiHoSo.DaDuyet, TrangThaiHoSo.DaTuChoi, TrangThaiHoSo.DaHuy };
+}
+<h3>Xin chào, @User.Identity?.Name</h3>
+<p class="text-muted">
+    Vai trò: @string.Join(", ", User.Claims
+        .Where(c => c.Type == System.Security.Claims.ClaimTypes.Role).Select(c => c.Value))
+</p>
+
+@if (TempData["ThongBao"] != null)
+{
+    <div class="alert alert-success">@TempData["ThongBao"]</div>
+}
+
+@if (laPheDuyet)
+{
+    <h5 class="mt-3">Việc cần làm của tôi</h5>
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <a class="text-decoration-none" asp-controller="HoSoDeNghi" asp-action="Index" asp-route-muc="canxuly">
+                <div class="card text-center border-primary">
+                    <div class="card-body">
+                        <div class="display-6">@ViewBag.CanXuLy</div>
+                        <div class="text-muted">Đề nghị đang chờ tôi xử lý</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-6">
+            <a class="text-decoration-none" asp-controller="HoSoDeNghi" asp-action="Index" asp-route-muc="canxuly">
+                <div class="card text-center border-danger">
+                    <div class="card-body">
+                        <div class="display-6 text-danger">@ViewBag.QuaHanCuaToi</div>
+                        <div class="text-muted">Trong đó đã quá hạn</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+}
+
+@if (laDeNghi)
+{
+    var cuaToi = (Dictionary<string, int>)ViewBag.CuaToi;
+    <h5 class="mt-3">Đề nghị của tôi</h5>
+    <div class="row mb-3">
+        @foreach (var t in cacTrangThai)
+        {
+            <div class="col-6 col-md-2">
+                <div class="card text-center">
+                    <div class="card-body p-2">
+                        <div class="fs-3">@(cuaToi.TryGetValue(t, out var d) ? d : 0)</div>
+                        <span class="badge @TrangThaiUi.Badge(t)">@t</span>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+    <a asp-controller="HoSoDeNghi" asp-action="Create" class="btn btn-primary mb-3">Tạo đề nghị mới</a>
+}
+
+@if (laPheDuyet || laQuanTri)
+{
+    <h5 class="mt-3">Tổng quan hệ thống</h5>
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="display-6">@ViewBag.TongHoSo</div><div class="text-muted">Tổng số đề nghị</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="display-6">@ViewBag.HeThongDangCho</div><div class="text-muted">Đang chờ duyệt</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <a class="text-decoration-none" asp-controller="GiamSat" asp-action="QuaHan">
+                <div class="card text-center border-danger">
+                    <div class="card-body">
+                        <div class="display-6 text-danger">@ViewBag.HeThongQuaHan</div><div class="text-muted">Đã quá hạn (xem chi tiết)</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+}
+
+@if (laQuanTri)
+{
+    <div class="card border-warning mt-4">
+        <div class="card-header bg-warning-subtle">Dữ liệu demo (dành cho quản trị viên)</div>
+        <div class="card-body">
+            <p class="small text-muted mb-2">Chỉ dùng khi chuẩn bị demo. Thao tác sẽ xóa toàn bộ đề nghị hiện có.</p>
+            <form asp-controller="Demo" asp-action="NapDuLieu" method="post" class="d-inline"
+                  data-msg="Thao tác này sẽ XÓA toàn bộ đề nghị hiện có và nạp 16 đề nghị mẫu. Tiếp tục?">
+                <button type="submit" class="btn btn-warning">Nạp dữ liệu demo</button>
+            </form>
+            <form asp-controller="Demo" asp-action="XoaDeNghi" method="post" class="d-inline"
+                  data-msg="Xóa toàn bộ đề nghị? Không thể hoàn tác.">
+                <button type="submit" class="btn btn-outline-danger">Xóa toàn bộ đề nghị</button>
+            </form>
+        </div>
+    </div>
+}

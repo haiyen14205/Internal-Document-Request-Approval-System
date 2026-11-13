@@ -1,0 +1,75 @@
+﻿@model InternalRequest_Management.Models.TaiKhoanVm
+@{
+    ViewData["Title"] = "Tài khoản của tôi";
+}
+<h3 class="mb-3">Tài khoản của tôi</h3>
+
+@if (TempData["ThongBao"] != null)
+{
+    <div class="banner banner-ok">@TempData["ThongBao"]</div>
+}
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card mb-3">
+            <div class="card-header">Thông tin cá nhân <span class="lock-note">bạn có thể tự chỉnh sửa</span></div>
+            <div class="card-body">
+                <form asp-action="CapNhat" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                    <div class="mb-3">
+                        <label asp-for="HoTen" class="form-label"></label>
+                        <input asp-for="HoTen" class="form-control" />
+                        <span asp-validation-for="HoTen" class="text-danger"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Email" class="form-label"></label>
+                        <input asp-for="Email" class="form-control" />
+                        <span asp-validation-for="Email" class="text-danger"></span>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">Thông tin do quản trị viên quản lý <span class="lock-note">🔒 chỉ xem</span></div>
+            <div class="card-body">
+                <div class="info-row"><div class="k">Tên đăng nhập</div><div class="v"><input class="form-control" value="@Model.TenDangNhap" disabled /></div></div>
+                <div class="info-row"><div class="k">Vai trò</div><div class="v"><input class="form-control" value="@Model.VaiTro" disabled /></div></div>
+                <div class="info-row"><div class="k">Phòng ban</div><div class="v"><input class="form-control" value="@Model.PhongBan" disabled /></div></div>
+                <div class="info-row"><div class="k">Chức danh</div><div class="v"><input class="form-control" value="@Model.ChucDanh" disabled /></div></div>
+                <div class="info-row"><div class="k">Quản lý trực tiếp</div><div class="v"><input class="form-control" value="@Model.QuanLy" disabled /></div></div>
+                <div class="info-row"><div class="k">Trạng thái</div><div class="v"><input class="form-control" value="@Model.TrangThai" disabled /></div></div>
+                <div class="text-muted small mt-2">Muốn thay đổi các mục trên, vui lòng liên hệ quản trị viên.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header">Đổi mật khẩu</div>
+            <div class="card-body">
+                @if (TempData["LoiMk"] != null)
+                {
+                    <div class="banner banner-bad mt-0">@TempData["LoiMk"]</div>
+                }
+                <form asp-action="DoiMatKhau" method="post">
+                    <div class="mb-3">
+                        <label class="form-label">Mật khẩu hiện tại</label>
+                        <input type="password" name="matKhauCu" class="form-control" autocomplete="current-password" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Mật khẩu mới</label>
+                        <input type="password" name="matKhauMoi" class="form-control" autocomplete="new-password" />
+                        <div class="form-text">Tối thiểu 6 ký tự, khác mật khẩu hiện tại.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nhập lại mật khẩu mới</label>
+                        <input type="password" name="xacNhan" class="form-control" autocomplete="new-password" />
+                    </div>
+                    <button type="submit" class="btn btn-primary">Đổi mật khẩu</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

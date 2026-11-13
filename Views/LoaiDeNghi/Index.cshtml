@@ -1,0 +1,59 @@
+﻿@model List<InternalRequest_Management.Models.LoaiDeNghi>
+@{
+    ViewData["Title"] = "Quản lý loại đề nghị";
+    var chuaXong = (Dictionary<int, int>)ViewBag.ChuaXong;
+}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">Quản lý loại đề nghị</h3>
+    <a asp-action="Create" class="btn btn-primary">Thêm mới</a>
+</div>
+
+@if (TempData["ThongBao"] != null)
+{
+    <div class="alert alert-success">@TempData["ThongBao"]</div>
+}
+
+<table class="table table-bordered align-middle">
+    <thead class="table-light">
+        <tr>
+            <th>Tên loại</th>
+            <th>Mã kỹ thuật</th>
+            <th>Trạng thái</th>
+            <th style="width:230px"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var x in Model)
+        {
+            var dem = chuaXong.TryGetValue(x.MaLoai, out var d) ? d : 0;
+            var msg = x.TrangThaiSuDung
+            ? (dem > 0
+            ? $"Loại này đang có {dem} đề nghị chưa xử lý xong. Nếu ngừng sử dụng, các đề nghị đã tạo không bị ảnh hưởng nhưng không thể tạo đề nghị mới thuộc loại này. Tiếp tục?"
+            : "Ngừng sử dụng loại đề nghị này?")
+            : "Bật lại loại đề nghị này?";
+            <tr>
+                <td>@x.TenLoai</td>
+                <td>@x.MaKyThuat</td>
+                <td>
+                    @if (x.TrangThaiSuDung)
+                    {
+                        <span class="badge bg-success">Đang sử dụng</span>
+                    }
+                    else
+                    {
+
+                        <span class="badge bg-secondary">Ngừng sử dụng</span>
+                    }
+                </td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@x.MaLoai" class="btn btn-sm btn-outline-primary">Sửa</a>
+                    <form asp-action="DoiTrangThai" asp-route-id="@x.MaLoai" method="post" class="d-inline" data-msg="@msg">
+                        <button type="submit" class="btn btn-sm @(x.TrangThaiSuDung ? "btn-outline-danger" : "btn-outline-success")">
+                            @(x.TrangThaiSuDung ? "Ngừng sử dụng" : "Bật lại")
+                        </button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

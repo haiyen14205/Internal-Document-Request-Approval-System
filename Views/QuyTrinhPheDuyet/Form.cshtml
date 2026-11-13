@@ -1,0 +1,143 @@
+﻿@model InternalRequest_Management.Models.QuyTrinhVm
+@{
+    var laTao = Model.MaQuyTrinh == 0;
+    ViewData["Title"] = laTao ? "Thêm quy trình phê duyệt" : "Sửa quy trình phê duyệt";
+    var loaiList = (List<InternalRequest_Management.Models.LoaiDeNghi>)ViewBag.LoaiList;
+    var nguoiList = (List<InternalRequest_Management.Models.NguoiDung>)ViewBag.NguoiList;
+    bool daDung = ViewBag.DaDung == true;
+}
+<h3>@ViewData["Title"]</h3>
+
+@if (!laTao && daDung)
+{
+    <div class="alert alert-warning">
+        Quy trình này đã có đề nghị sử dụng. Khi lưu, hệ thống sẽ tạo <strong>phiên bản mới</strong>
+        và ngừng áp dụng phiên bản hiện tại. Các đề nghị đã gửi vẫn theo phiên bản cũ.
+    </div>
+}
+
+<form asp-action="@(laTao ? "Create" : "Edit")" method="post" id="frm">
+    <input type="hidden" asp-for="MaQuyTrinh" />
+    <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+    <div class="row mb-3">
+        <div class="col-md-5">
+            <label asp-for="MaLoai" class="form-label"></label>
+            @if (laTao)
+            {
+                <select asp-for="MaLoai" class="form-select"
+                        asp-items="@(new SelectList(loaiList, "MaLoai", "TenLoai", Model.MaLoai))">
+                    <option value="0">-- Chọn loại đề nghị --</option>
+                </select>
+            }
+            else
+            {
+                <input type="hidden" asp-for="MaLoai" />
+                <input class="form-control" value="@Model.TenLoai (phiên bản hiện tại: v@Model.PhienBan)" disabled />
+            }
+        </div>
+        <div class="col-md-7">
+            <label asp-for="TenQuyTrinh" class="form-label"></label>
+            <input asp-for="TenQuyTrinh" class="form-control" />
+        </div>
+    </div>
+
+    <h5>Các bước phê duyệt</h5>
+    <p class="text-muted small mb-2">Thứ tự từ trên xuống dưới. Người xử lý chỉ chọn được người có vai trò Người phê duyệt.</p>
+
+    <table class="table table-bordered align-middle">
+        <thead class="table-light">
+            <tr>
+                <th style="width:60px" class="text-center">Thứ tự</th>
+                <th>Tên bước</th>
+                <th>Người xử lý</th>
+                <th style="width:140px">Hạn xử lý (giờ)</th>
+                <th style="width:150px"></th>
+            </tr>
+        </thead>
+        <tbody id="bang-buoc">
+            @foreach (var b in Model.Buocs)
+            {
+                <tr>
+                    <td class="stt text-center"></td>
+                    <td><input data-f="TenBuoc" value="@b.TenBuoc" class="form-control" /></td>
+                    <td>
+                        <select data-f="MaNguoiDung" class="form-select">
+                            <option value="0">-- Chọn người xử lý --</option>
+                            @foreach (var u in nguoiList)
+                            {
+                                <option value="@u.MaNguoiDung" selected="@(u.MaNguoiDung == b.MaNguoiDung)">@u.HoTen (@u.TenDangNhap)</option>
+                            }
+                        </select>
+                    </td>
+                    <td><input data-f="ThoiHanXuLyGio" type="number" min="1" value="@b.ThoiHanXuLyGio" class="form-control" /></td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-outline-secondary len">↑</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary xuong">↓</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger xoa">Xóa</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <template id="mau-buoc">
+        <tr>
+            <td class="stt text-center"></td>
+            <td><input data-f="TenBuoc" class="form-control" /></td>
+            <td>
+                <select data-f="MaNguoiDung" class="form-select">
+                    <option value="0">-- Chọn người xử lý --</option>
+                    @foreach (var u in nguoiList)
+                    {
+                        <option value="@u.MaNguoiDung">@u.HoTen (@u.TenDangNhap)</option>
+                    }
+                </select>
+            </td>
+            <td><input data-f="ThoiHanXuLyGio" type="number" min="1" value="24" class="form-control" /></td>
+            <td>
+                <button type="button" class="btn btn-sm btn-outline-secondary len">↑</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary xuong">↓</button>
+                <button type="button" class="btn btn-sm btn-outline-danger xoa">Xóa</button>
+            </td>
+        </tr>
+    </template>
+
+    <button type="button" id="them-buoc" class="btn btn-outline-primary mb-3">+ Thêm bước</button>
+    <div>
+        <button type="submit" class="btn btn-primary">Lưu</button>
+        <a asp-action="Index" class="btn btn-secondary">Hủy</a>
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        const tbody = document.getElementById('bang-buoc');
+
+        function danhSo() {
+            [...tbody.rows].forEach((tr, i) => {
+                tr.querySelector('.stt').textContent = i + 1;
+                tr.querySelectorAll('[data-f]').forEach(el => {
+                    el.name = 'Buocs[' + i + '].' + el.dataset.f;
+                });
+            });
+        }
+
+        document.getElementById('them-buoc').addEventListener('click', () => {
+            tbody.appendChild(document.getElementById('mau-buoc').content.cloneNode(true));
+            danhSo();
+        });
+
+        tbody.addEventListener('click', e => {
+            const tr = e.target.closest('tr');
+            if (!tr) return;
+            if (e.target.classList.contains('xoa')) tr.remove();
+            if (e.target.classList.contains('len') && tr.previousElementSibling) tr.parentNode.insertBefore(tr, tr.previousElementSibling);
+            if (e.target.classList.contains('xuong') && tr.nextElementSibling) tr.parentNode.insertBefore(tr.nextElementSibling, tr);
+            danhSo();
+        });
+
+        document.getElementById('frm').addEventListener('submit', danhSo);
+        danhSo();
+    </script>
+}

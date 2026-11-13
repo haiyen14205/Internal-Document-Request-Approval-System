@@ -1,0 +1,97 @@
+﻿@model InternalRequest_Management.Models.NguoiDungVm
+@using InternalRequest_Management.Models
+@{
+    bool laTao = Model.MaNguoiDung == 0;
+    ViewData["Title"] = laTao ? "Thêm người dùng" : "Sửa người dùng";
+    var vaiTroList = (List<VaiTro>)ViewBag.VaiTroList;
+    var phongBanList = (List<PhongBan>)ViewBag.PhongBanList;
+    var chucDanhList = (List<ChucDanh>)ViewBag.ChucDanhList;
+    var quanLyList = (List<NguoiDung>)ViewBag.QuanLyList;
+}
+<h3>@ViewData["Title"]</h3>
+
+<form asp-action="@(laTao ? "Create" : "Edit")" method="post" class="col-lg-7">
+    <input type="hidden" asp-for="MaNguoiDung" />
+    <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label asp-for="TenDangNhap" class="form-label"></label>
+            <input asp-for="TenDangNhap" class="form-control" />
+            <span asp-validation-for="TenDangNhap" class="text-danger"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="MatKhau" class="form-label"></label>
+            <input asp-for="MatKhau" type="password" class="form-control" autocomplete="new-password" />
+            <div class="form-text">@(laTao ? "Tối thiểu 6 ký tự." : "Để trống nếu không đổi mật khẩu.")</div>
+            <span asp-validation-for="MatKhau" class="text-danger"></span>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label asp-for="HoTen" class="form-label"></label>
+            <input asp-for="HoTen" class="form-control" />
+            <span asp-validation-for="HoTen" class="text-danger"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Email" class="form-label"></label>
+            <input asp-for="Email" class="form-control" />
+            <span asp-validation-for="Email" class="text-danger"></span>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <label asp-for="MaPhongBan" class="form-label"></label>
+            <select asp-for="MaPhongBan" class="form-select">
+                <option value="">-- Không chọn --</option>
+                @foreach (var p in phongBanList)
+                {
+                    <option value="@p.MaPhongBan" selected="@(Model.MaPhongBan == p.MaPhongBan)">@(p.TrangThai? p.TenPhongBan: p.TenPhongBan + " (ngừng hoạt động)")</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="MaChucDanh" class="form-label"></label>
+            <select asp-for="MaChucDanh" class="form-select">
+                <option value="">-- Không chọn --</option>
+                @foreach (var c in chucDanhList)
+                {
+                    <option value="@c.MaChucDanh" selected="@(Model.MaChucDanh == c.MaChucDanh)">@c.TenChucDanh</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="MaNguoiQuanLy" class="form-label"></label>
+            <select asp-for="MaNguoiQuanLy" class="form-select">
+                <option value="">-- Không có --</option>
+                @foreach (var q in quanLyList)
+                {
+                    <option value="@q.MaNguoiDung" selected="@(Model.MaNguoiQuanLy == q.MaNguoiDung)">@q.HoTen</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Vai trò</label>
+        @foreach (var v in vaiTroList)
+        {
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="VaiTroIds" value="@v.MaVaiTro" id="vt@(v.MaVaiTro)"
+                       checked="@(Model.VaiTroIds.Contains(v.MaVaiTro))" />
+                <label class="form-check-label" for="vt@(v.MaVaiTro)">@v.TenVaiTro</label>
+            </div>
+        }
+        <div class="form-text">Một người có thể có nhiều vai trò (ví dụ trưởng phòng vừa là Người phê duyệt vừa là Người đề nghị).</div>
+    </div>
+
+    <div class="form-check mb-3">
+        <input asp-for="TrangThai" class="form-check-input" />
+        <label asp-for="TrangThai" class="form-check-label"></label>
+    </div>
+
+    <button type="submit" class="btn btn-primary">@(laTao ? "Tạo" : "Cập nhật")</button>
+    <a asp-action="Index" class="btn btn-secondary">Hủy</a>
+</form>

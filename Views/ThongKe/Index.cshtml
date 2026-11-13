@@ -1,0 +1,228 @@
+﻿@model InternalRequest_Management.Models.ThongKeVm
+@using InternalRequest_Management.Models
+@using System.Globalization
+@{
+    ViewData["Title"] = "Thống kê";
+    var loaiList = (List<LoaiDeNghi>)ViewBag.LoaiList;
+    var cham = Model.Buocs.FirstOrDefault();
+    double maxTb = Model.Buocs.Count > 0 ? Model.Buocs.Max(b => b.TbGio) : 1;
+    if (maxTb <= 0) maxTb = 1;
+    string[] cacTrangThai = { TrangThaiHoSo.Nhap, TrangThaiHoSo.ChoDuyet, TrangThaiHoSo.ChoChinhSua,
+                              TrangThaiHoSo.DaDuyet, TrangThaiHoSo.DaTuChoi, TrangThaiHoSo.DaHuy };
+}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">Báo cáo và thống kê</h3>
+    <a class="btn btn-success @(Model.TongLuot == 0 ? "disabled" : "")"
+       asp-action="XuatExcel"
+       asp-route-tuNgay="@(Model.TuNgay?.ToString("yyyy-MM-dd"))"
+       asp-route-denNgay="@(Model.DenNgay?.ToString("yyyy-MM-dd"))"
+       asp-route-maLoai="@Model.MaLoai">Xuất báo cáo Excel</a>
+</div>
+
+<form method="get" class="card card-body mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label small mb-1">Từ ngày (ngày xử lý)</label>
+            <input type="date" name="tuNgay" value="@(Model.TuNgay?.ToString("yyyy-MM-dd"))" class="form-control" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small mb-1">Đến ngày</label>
+            <input type="date" name="denNgay" value="@(Model.DenNgay?.ToString("yyyy-MM-dd"))" class="form-control" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small mb-1">Loại đề nghị</label>
+            <select name="maLoai" class="form-select">
+                <option value="">Tất cả</option>
+                @foreach (var l in loaiList)
+                {
+                    <option value="@l.MaLoai" selected="@(Model.MaLoai == l.MaLoai)">@l.TenLoai</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-primary">Xem báo cáo</button>
+            <a asp-action="Index" class="btn btn-link">Xóa bộ lọc</a>
+        </div>
+    </div>
+</form>
+
+@if (Model.TongLuot == 0)
+{
+    <div class="alert alert-light border">Không có dữ liệu trong khoảng thời gian đã chọn.</div>
+}
+else
+{
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="display-6">@Model.TongLuot</div><div class="text-muted">Lượt xử lý</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="display-6">@Model.TbChung.ToString("0.0")</div><div class="text-muted">Giờ xử lý trung bình</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center border-danger">
+                <div class="card-body">
+                    <div class="display-6 text-danger">@Model.TongQuaHan</div><div class="text-muted">Lượt quá hạn</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center border-danger">
+                <div class="card-body">
+                    <div class="display-6 text-danger">@Model.TyLeQuaHan.ToString("0.#")%</div><div class="text-muted">Tỷ lệ quá hạn</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (cham != null)
+    {
+        <div class="alert alert-danger">
+            <strong>Bước gây chậm trễ nhất:</strong>
+            @cham.TenBuoc (@cham.TenLoai, quy trình v@cham.PhienBan)
+            - trung bình <strong>@cham.TbGio.ToString("0.0") giờ</strong>/lượt, @cham.SoQuaHan/@cham.SoLuot lượt quá hạn.
+            @if (cham.MauNho)
+            {
+                <span class="badge bg-warning text-dark">Mẫu nhỏ, chỉ tham khảo</span>
+            }
+        </div>
+    }
+
+    <div class="card mb-3" id="aiBox">
+        @Html.AntiForgeryToken()
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Nhận xét từ AI <span class="lock-note">dựa trên số liệu đang hiển thị, chỉ mang tính tham khảo</span></span>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="aiBtn">Phân tích bằng AI</button>
+        </div>
+        <div class="card-body d-none" id="aiBody" style="white-space:pre-line"></div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header">Thời gian xử lý trung bình theo bước (xếp từ chậm nhất)</div>
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:50px">Hạng</th>
+                        <th>Bước</th>
+                        <th>Loại / Quy trình</th>
+                        <th style="width:90px">Số lượt</th>
+                        <th style="width:300px">Trung bình (giờ)</th>
+                        <th style="width:110px">Lớn nhất (giờ)</th>
+                        <th style="width:130px">Quá hạn</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var b in Model.Buocs)
+                    {
+                        var pct = (b.TbGio / maxTb * 100).ToString("0.##", CultureInfo.InvariantCulture);
+                        <tr>
+                            <td class="text-center">@b.Hang</td>
+                            <td>
+                                @b.TenBuoc
+                                @if (b.MauNho)
+                                {
+                                    <span class="badge bg-warning text-dark">Mẫu nhỏ</span>
+                                }
+                            </td>
+                            <td><div>@b.TenLoai</div><div class="small text-muted">@b.TenQuyTrinh (v@b.PhienBan)</div></td>
+                            <td class="text-center">@b.SoLuot</td>
+                            <td>
+                                <div class="progress" style="height:22px">
+                                    <div class="progress-bar @(b.Hang == 1 ? "bg-danger" : "bg-primary")"
+                                         style="width:@(pct)%">
+                                        @b.TbGio.ToString("0.0")
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-center">@b.MaxGio.ToString("0.0")</td>
+                            <td class="text-center">@b.SoQuaHan/@b.SoLuot (@b.TyLeQuaHan.ToString("0")%)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-7">
+            <div class="card mb-3">
+                <div class="card-header">Theo người xử lý</div>
+                <table class="table table-bordered align-middle mb-0">
+                    <thead class="table-light">
+                        <tr><th>Người xử lý</th><th>Số lượt</th><th>Trung bình (giờ)</th><th>Quá hạn</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var n in Model.Nguois)
+                        {
+                            <tr>
+                                <td>@n.HoTen</td>
+                                <td class="text-center">@n.SoLuot</td>
+                                <td class="text-center">@n.TbGio.ToString("0.0")</td>
+                                <td class="text-center">@n.SoQuaHan</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="card mb-3">
+                <div class="card-header">Số hồ sơ theo trạng thái</div>
+                <ul class="list-group list-group-flush">
+                    @foreach (var t in cacTrangThai)
+                    {
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span class="badge @TrangThaiUi.Badge(t)">@t</span>
+                            <strong>@(Model.TheoTrangThai.TryGetValue(t, out var d) ? d : 0)</strong>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        const aiBtn = document.getElementById('aiBtn');
+        if (aiBtn) aiBtn.addEventListener('click', async () => {
+            const body = document.getElementById('aiBody');
+            body.classList.remove('d-none');
+            body.textContent = 'AI đang phân tích số liệu...';
+            aiBtn.disabled = true;
+            try {
+                const fd = new FormData();
+                fd.append('__RequestVerificationToken',
+                    document.querySelector('#aiBox input[name=__RequestVerificationToken]').value);
+                @if (Model.TuNgay.HasValue)
+                {
+                    <text>fd.append('tuNgay', '@Model.TuNgay.Value.ToString("yyyy-MM-dd")');</text>
+                }
+                @if (Model.DenNgay.HasValue)
+                {
+                    <text>fd.append('denNgay', '@Model.DenNgay.Value.ToString("yyyy-MM-dd")');</text>
+                }
+                @if (Model.MaLoai.HasValue)
+                {
+                    <text>fd.append('maLoai', '@Model.MaLoai.Value');</text>
+                }
+                const r = await fetch('@Url.Action("NhanXet", "ThongKe")', { method: 'POST', body: fd });
+                const j = await r.json();
+                body.textContent = j.text;
+            } catch (e) {
+                body.textContent = 'Hiện chưa dùng được nhận xét AI.';
+            }
+            aiBtn.disabled = false;
+            aiBtn.textContent = 'Phân tích lại';
+        });
+    </script>
+}

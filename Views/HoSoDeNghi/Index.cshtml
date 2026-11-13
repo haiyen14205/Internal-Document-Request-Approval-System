@@ -1,0 +1,140 @@
+﻿@model List<InternalRequest_Management.Models.HoSoDeNghi>
+@using InternalRequest_Management.Models
+@{
+    ViewData["Title"] = "Danh sách đề nghị";
+    string muc = ViewBag.Muc;
+    bool laPheDuyet = ViewBag.LaPheDuyet == true;
+    bool laQuanTri = ViewBag.LaQuanTri == true;
+    bool laDeNghi = User.IsInRole("Người đề nghị");
+    bool coLoc = ViewBag.CoLoc == true;
+    string? trangThaiHT = ViewBag.TrangThai as string;
+    string? tuKhoa = ViewBag.TuKhoa as string;
+    int? maLoaiHT = ViewBag.MaLoai as int?;
+    string? tuNgay = ViewBag.TuNgay as string;
+    string? denNgay = ViewBag.DenNgay as string;
+    var loaiList = (List<LoaiDeNghi>)ViewBag.LoaiList;
+    string[] cacTrangThai = { TrangThaiHoSo.ChoDuyet, TrangThaiHoSo.ChoChinhSua, TrangThaiHoSo.DaDuyet,
+                              TrangThaiHoSo.DaTuChoi, TrangThaiHoSo.Nhap, TrangThaiHoSo.DaHuy };
+    bool locNangCao = !string.IsNullOrWhiteSpace(tuKhoa) || maLoaiHT.HasValue || tuNgay != null || denNgay != null;
+}
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h3 class="mb-0">Danh sách đề nghị</h3>
+    <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#locPanel">Tìm kiếm / Lọc ›</button>
+</div>
+
+@if (TempData["ThongBao"] != null)
+{
+    <div class="banner banner-ok">@TempData["ThongBao"]</div>
+}
+@if (TempData["Loi"] != null)
+{
+    <div class="banner banner-bad">@TempData["Loi"]</div>
+}
+
+<div class="tabs-line">
+    @if (laDeNghi || laPheDuyet)
+    {
+        <a class="@(muc == "cuatoi" ? "active" : "")" asp-action="Index" asp-route-muc="cuatoi">Đề nghị của tôi</a>
+    }
+    @if (laPheDuyet)
+    {
+        <a class="@(muc == "canxuly" ? "active" : "")" asp-action="Index" asp-route-muc="canxuly">Cần tôi xử lý</a>
+    }
+    @if (laQuanTri)
+    {
+        <a class="@(muc == "tatca" ? "active" : "")" asp-action="Index" asp-route-muc="tatca">Tất cả đề nghị</a>
+    }
+</div>
+
+<div class="mb-2">
+    <a class="chip @(string.IsNullOrEmpty(trangThaiHT) ? "active" : "")" asp-action="Index" asp-route-muc="@muc"
+       asp-route-tuKhoa="@tuKhoa" asp-route-maLoai="@maLoaiHT" asp-route-tuNgay="@tuNgay" asp-route-denNgay="@denNgay">Tất cả</a>
+    @foreach (var t in cacTrangThai)
+    {
+        <a class="chip @(trangThaiHT == t ? "active" : "")" asp-action="Index" asp-route-muc="@muc" asp-route-trangThai="@t"
+           asp-route-tuKhoa="@tuKhoa" asp-route-maLoai="@maLoaiHT" asp-route-tuNgay="@tuNgay" asp-route-denNgay="@denNgay">@t</a>
+    }
+</div>
+
+<div class="collapse @(locNangCao ? "show" : "")" id="locPanel">
+    <form method="get" asp-action="Index" class="card card-body mb-3">
+        <input type="hidden" name="muc" value="@muc" />
+        <input type="hidden" name="trangThai" value="@trangThaiHT" />
+        <div class="row g-2">
+            <div class="col-md-4">
+                <label class="form-label small mb-1">Từ khóa</label>
+                <input name="tuKhoa" value="@tuKhoa" class="form-control" placeholder="Số hồ sơ, nội dung, người đề nghị" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small mb-1">Loại đề nghị</label>
+                <select name="maLoai" class="form-select">
+                    <option value="">Tất cả</option>
+                    @foreach (var l in loaiList)
+                    {
+                        <option value="@l.MaLoai" selected="@(maLoaiHT == l.MaLoai)">@l.TenLoai</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">Từ ngày</label>
+                <input type="date" name="tuNgay" value="@tuNgay" class="form-control" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">Đến ngày</label>
+                <input type="date" name="denNgay" value="@denNgay" class="form-control" />
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">Lọc</button>
+            </div>
+        </div>
+        @if (coLoc)
+        {
+            <div class="mt-2"><a asp-action="Index" asp-route-muc="@muc" class="small">Xóa bộ lọc</a></div>
+        }
+    </form>
+</div>
+
+@if (Model.Count == 0)
+{
+    <div class="banner banner-info">@(coLoc ? "Không tìm thấy đề nghị phù hợp!" : "Chưa có đề nghị nào!")</div>
+}
+else
+{
+    <div class="text-muted small mb-2">@Model.Count đề nghị</div>
+    <div class="req-list">
+        @foreach (var h in Model)
+        {
+            var buocMo = h.BuocXuLyHoSos.Where(b => b.ThoiDiemHoanTat == null).OrderByDescending(b => b.ThoiDiemNhan).FirstOrDefault();
+            bool quaHan = buocMo != null && h.TrangThai == TrangThaiHoSo.ChoDuyet && DateTime.Now > buocMo.HanXuLy;
+            string nd = h.NoiDung ?? "";
+            if (nd.Length > 70) { nd = nd.Substring(0, 70) + "…"; }
+            <a class="req-row" asp-action="Details" asp-route-id="@h.MaHoSo">
+                <span class="avatar @UiHelper.AvatarClass(h.MaNguoiDung)">@UiHelper.Initials(h.NguoiDeNghi?.HoTen)</span>
+                <div class="req-main">
+                    <div class="req-title">@h.LoaiDeNghi?.TenLoai · @h.SoHoSo</div>
+                    <div class="req-meta">
+                        @h.NguoiDeNghi?.HoTen
+                        @if (h.BuocHienTai != null)
+                        {
+                            <text> · Bước: @h.BuocHienTai.TenBuoc</text>
+                        }
+                        @if (buocMo != null && h.TrangThai == TrangThaiHoSo.ChoDuyet)
+                        {
+                            <text> · Hạn: @buocMo.HanXuLy.ToString("dd/MM HH:mm")</text>
+                        }
+                        @if (nd != "")
+                        {
+                            <text> · @nd</text>
+                        }
+                    </div>
+                </div>
+                @if (quaHan)
+                {
+                    <span class="pill pill-late">Quá hạn</span>
+                }
+                <span class="@TrangThaiUi.Pill(h.TrangThai)">@h.TrangThai</span>
+                <span class="req-date">@h.NgayTao.ToString("dd/MM")</span>
+            </a>
+        }
+    </div>
+}

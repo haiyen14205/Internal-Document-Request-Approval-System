@@ -1,0 +1,70 @@
+﻿@model List<InternalRequest_Management.Models.QuyTrinhPheDuyet>
+@{
+    ViewData["Title"] = "Quản lý quy trình phê duyệt";
+    var dangChay = (Dictionary<int, int>)ViewBag.DangChay;
+}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">Quản lý quy trình phê duyệt</h3>
+    <a asp-action="Create" class="btn btn-primary">Thêm mới</a>
+</div>
+
+@if (TempData["ThongBao"] != null)
+{
+    <div class="alert alert-success">@TempData["ThongBao"]</div>
+}
+
+<table class="table table-bordered align-middle">
+    <thead class="table-light">
+        <tr>
+            <th>Loại đề nghị</th>
+            <th>Tên quy trình</th>
+            <th>Phiên bản</th>
+            <th>Các bước</th>
+            <th>Trạng thái</th>
+            <th style="width:230px"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var q in Model)
+        {
+            var dem = dangChay.TryGetValue(q.MaQuyTrinh, out var d) ? d : 0;
+            var msg = q.TrangThaiApDung
+            ? (dem > 0
+            ? $"Quy trình này đang áp dụng cho {dem} đề nghị chưa hoàn thành. Việc ngừng sử dụng chỉ áp dụng cho đề nghị tạo mới, các đề nghị đang xử lý vẫn tiếp tục theo quy trình hiện tại. Tiếp tục?"
+            : "Ngừng áp dụng quy trình này?")
+            : "Bật lại quy trình này? (Các quy trình khác của cùng loại sẽ ngừng áp dụng)";
+            <tr>
+                <td>@q.LoaiDeNghi?.TenLoai</td>
+                <td>@q.TenQuyTrinh</td>
+                <td>v@q.PhienBan</td>
+                <td>
+                    <ol class="mb-0 ps-3 small">
+                        @foreach (var b in q.BuocQuyTrinhs.OrderBy(b => b.ThuTuBuoc))
+                        {
+                            <li>@b.TenBuoc - @b.NguoiXuLy?.HoTen (@b.ThoiHanXuLyGio giờ)</li>
+                        }
+                    </ol>
+                </td>
+                <td>
+                    @if (q.TrangThaiApDung)
+                    {
+                        <span class="badge bg-success">Đang áp dụng</span>
+                    }
+                    else
+                    {
+
+                        <span class="badge bg-secondary">Ngừng áp dụng</span>
+                    }
+                </td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@q.MaQuyTrinh" class="btn btn-sm btn-outline-primary">Sửa</a>
+                    <form asp-action="DoiTrangThai" asp-route-id="@q.MaQuyTrinh" method="post" class="d-inline" data-msg="@msg">
+                        <button type="submit" class="btn btn-sm @(q.TrangThaiApDung ? "btn-outline-danger" : "btn-outline-success")">
+                            @(q.TrangThaiApDung ? "Ngừng sử dụng" : "Bật lại")
+                        </button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

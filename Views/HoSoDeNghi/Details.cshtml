@@ -1,0 +1,301 @@
+﻿@model InternalRequest_Management.Models.HoSoDeNghi
+@using System.Security.Claims
+@using InternalRequest_Management.Models
+@{
+    ViewData["Title"] = "Chi tiết đề nghị " + Model.SoHoSo;
+    var tep = (List<TepInfo>)ViewBag.Tep;
+    bool chuHoSo = ViewBag.ChuHoSo == true;
+    bool coTheSua = ViewBag.CoTheSua == true;
+    bool coTheHuy = ViewBag.CoTheHuy == true;
+    bool canXuLy = ViewBag.CanXuLy == true;
+    bool chuaDenLuot = ViewBag.ChuaDenLuot == true;
+    var lyDo = ViewBag.LyDo as BuocXuLyHoSo;
+    int maToi = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+    var daXuLy = Model.BuocXuLyHoSos.Where(x => x.ThoiDiemHoanTat != null).OrderBy(x => x.ThoiDiemNhan).ToList();
+    var buocMo = Model.BuocXuLyHoSos.Where(b => b.ThoiDiemHoanTat == null).OrderByDescending(b => b.ThoiDiemNhan).FirstOrDefault();
+    bool dangCho = buocMo != null && Model.TrangThai == TrangThaiHoSo.ChoDuyet;
+    bool quaHan = dangCho && DateTime.Now > buocMo!.HanXuLy;
+    var cacBuoc = Model.QuyTrinhPheDuyet?.BuocQuyTrinhs.OrderBy(b => b.ThuTuBuoc).ToList() ?? new List<BuocQuyTrinh>();
+    bool toiDaDuyet = !canXuLy && daXuLy.Any(x => x.MaNguoiDung == maToi && x.KetQua == KetQuaXuLy.PheDuyet);
+}
+
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-1">
+    <div>
+        <h3 class="mb-1">@Model.LoaiDeNghi?.TenLoai · @Model.SoHoSo</h3>
+        <div class="text-muted">
+            Trạng thái: <span class="@TrangThaiUi.Pill(Model.TrangThai)">@Model.TrangThai</span>
+            @if (quaHan)
+            {
+                <span class="pill pill-late">Quá hạn</span>
+            }
+        </div>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">‹ Quay lại danh sách</a>
+</div>
+
+@if (TempData["ThongBao"] != null)
+{
+    <div class="banner banner-ok">@TempData["ThongBao"]</div>
+}
+@if (TempData["Loi"] != null)
+{
+    <div class="banner banner-bad">@TempData["Loi"]</div>
+}
+@if (toiDaDuyet)
+{
+    <div class="banner banner-ok">Bạn đã chấp thuận đề nghị này.</div>
+}
+@if (chuaDenLuot)
+{
+    <div class="banner banner-warn">Đề nghị đang ở bước khác, chưa đến lượt bạn xử lý. Bạn chỉ có thể xem thông tin.</div>
+}
+@if (lyDo != null)
+{
+    <div class="banner @(Model.TrangThai == TrangThaiHoSo.DaTuChoi ? "banner-bad" : "banner-info")">
+        <strong>@(Model.TrangThai == TrangThaiHoSo.DaTuChoi ? "Lý do từ chối" : "Nội dung yêu cầu chỉnh sửa"):</strong>
+        @lyDo.YKien
+        <div class="small">@lyDo.NguoiXuLy?.HoTen · @lyDo.ThoiDiemHoanTat?.ToString("dd/MM/yyyy HH:mm")</div>
+    </div>
+}
+
+@if (canXuLy)
+{
+    <div class="act-row">
+        <button type="button" class="btn-act bg-act-green" data-bs-toggle="modal" data-bs-target="#xuLyModal" data-act="duyet">Phê duyệt</button>
+        <button type="button" class="btn-act bg-act-teal" data-bs-toggle="modal" data-bs-target="#xuLyModal" data-act="chinhsua">Yêu cầu chỉnh sửa</button>
+        <button type="button" class="btn-act bg-act-red" data-bs-toggle="modal" data-bs-target="#xuLyModal" data-act="tuchoi">Từ chối</button>
+    </div>
+}
+
+@if (canXuLy)
+{
+    <div class="card mb-3" id="aiBox">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Gợi ý từ AI <span class="lock-note">chỉ mang tính tham khảo, người duyệt quyết định</span></span>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="aiBtn">Phân tích đề nghị</button>
+        </div>
+        <div class="card-body d-none" id="aiBody" style="white-space:pre-line"></div>
+    </div>
+}
+
+@if (chuHoSo && (coTheSua || coTheHuy))
+{
+    <div class="my-3">
+        @if (coTheSua)
+        {
+            <a asp-action="Edit" asp-route-id="@Model.MaHoSo" class="btn btn-primary">
+                @(Model.TrangThai == TrangThaiHoSo.ChoChinhSua ? "Chỉnh sửa và gửi lại" : "Chỉnh sửa")
+            </a>
+        }
+        @if (coTheHuy)
+        {
+            <form asp-action="Huy" asp-route-id="@Model.MaHoSo" method="post" class="d-inline" data-msg="Bạn chắc chắn muốn hủy đề nghị này?">
+                <button type="submit" class="btn btn-outline-danger">Hủy đề nghị</button>
+            </form>
+        }
+    </div>
+}
+
+<div class="detail-grid">
+    <div>
+        <div class="sec-title">Thông tin đề nghị</div>
+        <div class="info-row"><div class="k">Người tạo</div><div class="v">@Model.NguoiDeNghi?.HoTen</div></div>
+        <div class="info-row"><div class="k">Loại đề nghị</div><div class="v">@Model.LoaiDeNghi?.TenLoai</div></div>
+        <div class="info-row"><div class="k">Thời gian tạo</div><div class="v">@Model.NgayTao.ToString("dd/MM/yyyy HH:mm")</div></div>
+        <div class="info-row"><div class="k">Từ ngày</div><div class="v">@Model.NgayBatDau?.ToString("dd/MM/yyyy")</div></div>
+        <div class="info-row"><div class="k">Đến ngày</div><div class="v">@Model.NgayKetThuc?.ToString("dd/MM/yyyy")</div></div>
+        @if (Model.LoaiDeNghi?.MaKyThuat != "NGHI_PHEP")
+        {
+            <div class="info-row"><div class="k">Địa điểm</div><div class="v">@Model.DiaDiem</div></div>
+            <div class="info-row"><div class="k">Kinh phí dự kiến</div><div class="v">@(Model.KinhPhi?.ToString("N0"))</div></div>
+        }
+        <div class="info-row"><div class="k">Nội dung</div><div class="v" style="white-space:pre-line">@Model.NoiDung</div></div>
+        <div class="info-row">
+            <div class="k">Tệp đính kèm</div>
+            <div class="v">
+                @if (tep.Count == 0)
+                {
+                    <span class="text-muted">Không có</span>
+                }
+                @foreach (var t in tep)
+                {
+                    <div>
+                        <a asp-action="Tai" asp-route-maHoSo="@Model.MaHoSo" asp-route-maTep="@t.MaTep">@t.TenTep</a>
+                        <span class="text-muted small">(@((t.KichThuoc ?? 0) / 1024) KB)</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @if (dangCho)
+        {
+            <div class="sec-title">Bước đang chờ xử lý</div>
+            <div class="info-row"><div class="k">Bước</div><div class="v"><strong>@Model.BuocHienTai?.TenBuoc</strong></div></div>
+            <div class="info-row"><div class="k">Người xử lý</div><div class="v">@buocMo!.NguoiXuLy?.HoTen</div></div>
+            <div class="info-row"><div class="k">Nhận lúc</div><div class="v">@buocMo.ThoiDiemNhan.ToString("dd/MM/yyyy HH:mm")</div></div>
+            <div class="info-row"><div class="k">Hạn xử lý</div><div class="v">@buocMo.HanXuLy.ToString("dd/MM/yyyy HH:mm")</div></div>
+        }
+
+        <div class="sec-title">Các bước đã xử lý</div>
+        @if (daXuLy.Count == 0)
+        {
+            <div class="text-muted py-2">Chưa có bước nào được xử lý.</div>
+        }
+        @foreach (var b in daXuLy)
+        {
+            <div class="info-row">
+                <div class="k">@b.BuocQuyTrinh?.TenBuoc</div>
+                <div class="v">
+                    <strong>@b.NguoiXuLy?.HoTen</strong>
+                    <span class="@(b.KetQua == KetQuaXuLy.PheDuyet ? "pill pill-ok" : b.KetQua == KetQuaXuLy.TuChoi ? "pill pill-bad" : "pill pill-edit")" style="min-width:0">@b.KetQua</span>
+                    <span class="text-muted small">@b.ThoiGianXuLyGio?.ToString("0.0") giờ</span>
+                    @if (b.QuaHan)
+                    {
+                        <span class="pill pill-late">Quá hạn</span>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(b.YKien))
+                    {
+                        <div class="small text-muted">Ý kiến: @b.YKien</div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="side-panel">
+        <div class="sec-title">Người xét duyệt</div>
+        @if (cacBuoc.Count == 0)
+        {
+            <div class="text-muted small">Đề nghị chưa được gửi nên chưa có quy trình xét duyệt.</div>
+        }
+        @foreach (var b in cacBuoc)
+        {
+            var xl = daXuLy.Where(x => x.MaBuoc == b.MaBuoc).OrderByDescending(x => x.ThoiDiemHoanTat).FirstOrDefault();
+            bool laBuocHienTai = Model.MaBuoc == b.MaBuoc && (Model.TrangThai == TrangThaiHoSo.ChoDuyet || Model.TrangThai == TrangThaiHoSo.ChoChinhSua);
+            string dot, tip;
+            if (laBuocHienTai && Model.TrangThai == TrangThaiHoSo.ChoDuyet) { dot = "dot-now"; tip = "Đang chờ xử lý"; }
+            else if (laBuocHienTai) { dot = "dot-edit"; tip = "Đã yêu cầu chỉnh sửa"; }
+            else if (xl != null) { dot = xl.KetQua == KetQuaXuLy.PheDuyet ? "dot-done" : xl.KetQua == KetQuaXuLy.TuChoi ? "dot-bad" : "dot-edit"; tip = xl.KetQua ?? ""; }
+            else { dot = "dot-wait"; tip = "Chưa đến lượt"; }
+            <div class="approver">
+                <span class="avatar avatar-sm @UiHelper.AvatarClass(b.MaNguoiDung)">@UiHelper.Initials(b.NguoiXuLy?.HoTen)</span>
+                <div>
+                    <div class="nm">@b.NguoiXuLy?.HoTen</div>
+                    <div class="sub">@b.ThuTuBuoc. @b.TenBuoc · @b.ThoiHanXuLyGio giờ</div>
+                </div>
+                <span class="dot @dot" title="@tip"></span>
+            </div>
+        }
+
+        <div class="sec-title mt-4">Hoạt động chính</div>
+        @foreach (var l in Model.LichSuXuLys.OrderByDescending(x => x.ThoiDiem))
+        {
+            <div class="tl-item">
+                <div class="tl-time">@l.ThoiDiem.ToString("dd/MM")<br />@l.ThoiDiem.ToString("HH:mm")</div>
+                <div class="tl-dot"></div>
+                <div>
+                    <div class="tl-text">@l.NoiDung</div>
+                    <div class="tl-who">@l.NguoiThucHien?.HoTen</div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@if (canXuLy)
+{
+    <div class="modal fade" id="xuLyModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form method="post" id="xuLyForm" class="modal-content">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title" id="xuLyTitle"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="small text-muted mb-2" id="xuLyHint"></div>
+                    <textarea name="yKien" id="yKien" rows="4" class="form-control"></textarea>
+                    <div class="text-danger small mt-1 d-none" id="xuLyLoi">Vui lòng nhập nội dung.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy bỏ</button>
+                    <button type="submit" class="btn text-white" id="xuLyOk"></button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    @if (canXuLy)
+    {
+        <script>
+            const cfg = {
+                duyet: {
+                    url: '@Url.Action("Duyet", "PheDuyet", new { id = Model.MaHoSo })',
+                    title: 'Phê duyệt đề nghị @Model.SoHoSo',
+                    hint: 'Ý kiến (không bắt buộc)',
+                    bat: false, mau: '#5ea817', ok: 'Đồng ý đề nghị này'
+                },
+                chinhsua: {
+                    url: '@Url.Action("YeuCauChinhSua", "PheDuyet", new { id = Model.MaHoSo })',
+                    title: 'Yêu cầu chỉnh sửa đề nghị @Model.SoHoSo',
+                    hint: 'Nhập nội dung cần người đề nghị chỉnh sửa (bắt buộc)',
+                    bat: true, mau: '#1fa38b', ok: 'Gửi yêu cầu chỉnh sửa'
+                },
+                tuchoi: {
+                    url: '@Url.Action("TuChoi", "PheDuyet", new { id = Model.MaHoSo })',
+                    title: 'Từ chối đề nghị @Model.SoHoSo',
+                    hint: 'Nhập lý do từ chối (bắt buộc)',
+                    bat: true, mau: '#d9453c', ok: 'Từ chối đề nghị này'
+                }
+            };
+            let hienTai = cfg.duyet;
+            const form = document.getElementById('xuLyForm');
+            const ta = document.getElementById('yKien');
+            const loi = document.getElementById('xuLyLoi');
+
+            document.getElementById('xuLyModal').addEventListener('show.bs.modal', e => {
+                hienTai = cfg[e.relatedTarget.dataset.act];
+                form.action = hienTai.url;
+                document.getElementById('xuLyTitle').textContent = hienTai.title;
+                document.getElementById('xuLyHint').textContent = hienTai.hint;
+                const ok = document.getElementById('xuLyOk');
+                ok.textContent = hienTai.ok;
+                ok.style.background = hienTai.mau;
+                ta.value = '';
+                loi.classList.add('d-none');
+            });
+            form.addEventListener('submit', e => {
+                if (hienTai.bat && ta.value.trim() === '') {
+                    e.preventDefault();
+                    loi.classList.remove('d-none');
+                    ta.focus();
+                }
+            });
+
+            const aiBtn = document.getElementById('aiBtn');
+            if (aiBtn) aiBtn.addEventListener('click', async () => {
+                const body = document.getElementById('aiBody');
+                body.classList.remove('d-none');
+                body.textContent = 'AI đang phân tích...';
+                aiBtn.disabled = true;
+                try {
+                    const fd = new FormData();
+                    fd.append('id', '@Model.MaHoSo');
+                    fd.append('__RequestVerificationToken',
+                        document.querySelector('#xuLyForm input[name=__RequestVerificationToken]').value);
+                    const r = await fetch('@Url.Action("TomTat", "GoiYAi")', { method: 'POST', body: fd });
+                    const j = await r.json();
+                    body.textContent = j.text;
+                } catch (e) {
+                    body.textContent = 'Hiện chưa dùng được gợi ý AI.';
+                }
+                aiBtn.disabled = false;
+                aiBtn.textContent = 'Phân tích lại';
+            });
+
+        </script>
+    }
+}

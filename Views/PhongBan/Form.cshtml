@@ -1,0 +1,36 @@
+﻿@model InternalRequest_Management.Models.PhongBanVm
+@using InternalRequest_Management.Models
+@{
+    bool laTao = Model.MaPhongBan == 0;
+    ViewData["Title"] = laTao ? "Thêm phòng ban" : "Sửa phòng ban";
+    var chaList = (List<PhongBan>)ViewBag.ChaList;
+}
+<h3>@ViewData["Title"]</h3>
+
+<form asp-action="@(laTao ? "Create" : "Edit")" method="post" class="col-lg-5">
+    <input type="hidden" asp-for="MaPhongBan" />
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="mb-3">
+        <label asp-for="TenPhongBan" class="form-label"></label>
+        <input asp-for="TenPhongBan" class="form-control" autofocus />
+        <span asp-validation-for="TenPhongBan" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="MaPhongBanCha" class="form-label"></label>
+        <select asp-for="MaPhongBanCha" class="form-select">
+            <option value="">-- Không có (phòng ban cấp cao nhất) --</option>
+            @foreach (var p in chaList)
+            {
+                <option value="@p.MaPhongBan" selected="@(Model.MaPhongBanCha == p.MaPhongBan)">
+                    @(p.TrangThai? p.TenPhongBan: p.TenPhongBan + " (ngừng hoạt động)")
+                </option>
+            }
+        </select>
+        <span asp-validation-for="MaPhongBanCha" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Lưu</button>
+    <a asp-action="Index" class="btn btn-secondary">Hủy</a>
+</form>

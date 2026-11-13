@@ -1,0 +1,182 @@
+﻿@model InternalRequest_Management.Models.HoSoVm
+@using InternalRequest_Management.Models
+@{
+    string che = ViewBag.Che;
+    bool laTao = che == "tao";
+    ViewData["Title"] = laTao ? "Tạo đề nghị mới" : "Chỉnh sửa đề nghị " + ViewBag.SoHoSo;
+    var loaiList = (List<LoaiDeNghi>)ViewBag.LoaiList;
+    var tepHienCo = Model.TepHienCo ?? new List<TepInfo>();
+}
+<h3>@ViewData["Title"]</h3>
+
+<form method="post" enctype="multipart/form-data" asp-action="@(laTao ? "Create" : "Edit")" class="col-lg-8">
+    <input type="hidden" asp-for="MaHoSo" />
+    <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+    <div class="mb-3">
+        <label asp-for="MaLoai" class="form-label"></label>
+        @if (laTao)
+        {
+            <select asp-for="MaLoai" class="form-select">
+                <option value="0">-- Chọn loại đề nghị --</option>
+                @foreach (var l in loaiList)
+                {
+                    <option value="@l.MaLoai" data-ma="@l.MaKyThuat" selected="@(l.MaLoai == Model.MaLoai)">@l.TenLoai</option>
+                }
+            </select>
+        }
+        else
+        {
+            <input type="hidden" asp-for="MaLoai" />
+            <input type="hidden" id="ma-ky-thuat" value="@ViewBag.MaKyThuat" />
+            <input class="form-control" value="@ViewBag.TenLoai" disabled />
+        }
+    </div>
+
+    <div id="vung-form" style="@(laTao && Model.MaLoai == 0 ? "display:none" : "")">
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label asp-for="NgayBatDau" class="form-label"></label>
+                <input asp-for="NgayBatDau" type="date" class="form-control" />
+                <span asp-validation-for="NgayBatDau" class="text-danger"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="NgayKetThuc" class="form-label"></label>
+                <input asp-for="NgayKetThuc" type="date" class="form-control" />
+                <span asp-validation-for="NgayKetThuc" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="mb-3" id="nhom-diadiem">
+            <label asp-for="DiaDiem" class="form-label"></label>
+            <input asp-for="DiaDiem" class="form-control" />
+            <span asp-validation-for="DiaDiem" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3" id="nhom-kinhphi">
+            <label asp-for="KinhPhi" class="form-label"></label>
+            <input asp-for="KinhPhi" type="number" min="0" step="1000" class="form-control" />
+            <span asp-validation-for="KinhPhi" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="NoiDung" class="form-label"></label>
+            <textarea asp-for="NoiDung" rows="4" class="form-control"></textarea>
+            <span asp-validation-for="NoiDung" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <button type="button" class="btn btn-sm btn-outline-primary" id="aiKiemTra">Kiểm tra bằng AI</button>
+            <span class="text-muted small ms-2">AI nhận xét và gợi ý cách viết đầy đủ hơn, bạn quyết định có dùng hay không.</span>
+            <div class="card mt-2 d-none" id="aiKq">
+                <div class="card-body">
+                    <div id="aiNhanXet" style="white-space:pre-line"></div>
+                    <div id="aiGoiYBox" class="mt-3 d-none">
+                        <div class="fw-semibold small text-uppercase text-muted mb-1">Nội dung gợi ý</div>
+                        <div class="border rounded p-2 bg-light" id="aiGoiY" style="white-space:pre-line"></div>
+                        <button type="button" class="btn btn-sm btn-success mt-2" id="aiDung">Dùng nội dung này</button>
+                        <span class="text-muted small ms-2">Nhớ thay các chỗ trong [ngoặc vuông] bằng thông tin thật.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (tepHienCo.Count > 0)
+        {
+            <div class="mb-3">
+                <label class="form-label">Tệp đã đính kèm (chọn để xóa)</label>
+                @foreach (var t in tepHienCo)
+                {
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="TepXoa" value="@t.MaTep" id="xoa@(t.MaTep)" />
+                        <label class="form-check-label" for="xoa@(t.MaTep)">@t.TenTep (@((t.KichThuoc ?? 0) / 1024) KB)</label>
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="mb-3">
+            <label class="form-label">Đính kèm tệp (tối đa 5 tệp, mỗi tệp tối đa 10 MB)</label>
+            <input type="file" name="TepMoi" multiple class="form-control" />
+        </div>
+    </div>
+
+    <div class="mt-3">
+        @if (che == "tao" || che == "nhap")
+        {
+            <button type="submit" name="hanhDong" value="luu" class="btn btn-outline-primary">Lưu nháp</button>
+            <button type="submit" name="hanhDong" value="gui" class="btn btn-primary">Gửi đề nghị</button>
+        }
+        else if (che == "choduyet")
+        {
+            <button type="submit" name="hanhDong" value="luu" class="btn btn-primary">Cập nhật</button>
+        }
+        else
+        {
+            <button type="submit" name="hanhDong" value="luu" class="btn btn-outline-primary">Lưu tạm</button>
+            <button type="submit" name="hanhDong" value="gui" class="btn btn-primary">Cập nhật và gửi lại</button>
+        }
+        <a asp-action="Index" class="btn btn-secondary">Hủy</a>
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        function maHienTai() {
+            const s = document.getElementById('MaLoai');
+            if (s && s.tagName === 'SELECT') return s.selectedOptions[0]?.dataset.ma || '';
+            const h = document.getElementById('ma-ky-thuat');
+            return h ? h.value : '';
+        }
+        function capNhat() {
+            const ma = maHienTai();
+            const s = document.getElementById('MaLoai');
+            const chuaChon = s && s.tagName === 'SELECT' && s.value === '0';
+            document.getElementById('vung-form').style.display = chuaChon ? 'none' : '';
+            const nghiPhep = ma === 'NGHI_PHEP';
+            document.getElementById('nhom-diadiem').style.display = nghiPhep ? 'none' : '';
+            document.getElementById('nhom-kinhphi').style.display = nghiPhep ? 'none' : '';
+        }
+        const sel = document.getElementById('MaLoai');
+        if (sel && sel.tagName === 'SELECT') sel.addEventListener('change', capNhat);
+        capNhat();
+
+        const nutAi = document.getElementById('aiKiemTra');
+        nutAi.addEventListener('click', async () => {
+            const frm = document.getElementById('MaLoai').closest('form');
+            const kq = document.getElementById('aiKq');
+            const nx = document.getElementById('aiNhanXet');
+            const gyBox = document.getElementById('aiGoiYBox');
+            kq.classList.remove('d-none');
+            gyBox.classList.add('d-none');
+            nx.textContent = 'AI đang kiểm tra...';
+            nutAi.disabled = true;
+            try {
+                const fd = new FormData();
+                fd.append('__RequestVerificationToken', frm.querySelector('input[name=__RequestVerificationToken]').value);
+                fd.append('maLoai', document.getElementById('MaLoai').value);
+                fd.append('maHoSo', document.getElementById('MaHoSo').value || '0');
+                fd.append('noiDung', document.getElementById('NoiDung').value);
+                fd.append('ngayBatDau', document.getElementById('NgayBatDau').value);
+                fd.append('ngayKetThuc', document.getElementById('NgayKetThuc').value);
+                fd.append('diaDiem', document.getElementById('DiaDiem').value);
+                fd.append('kinhPhi', document.getElementById('KinhPhi').value);
+                const r = await fetch('@Url.Action("KiemTra", "TroLyAi")', { method: 'POST', body: fd });
+                const j = await r.json();
+                nx.textContent = j.nhanXet;
+                if (j.goiY) {
+                    document.getElementById('aiGoiY').textContent = j.goiY;
+                    gyBox.classList.remove('d-none');
+                }
+            } catch (e) {
+                nx.textContent = 'Hiện chưa dùng được trợ lý AI.';
+            }
+            nutAi.disabled = false;
+            nutAi.textContent = 'Kiểm tra lại';
+        });
+        document.getElementById('aiDung').addEventListener('click', () => {
+            document.getElementById('NoiDung').value = document.getElementById('aiGoiY').textContent;
+            document.getElementById('NoiDung').focus();
+        });
+    </script>
+}

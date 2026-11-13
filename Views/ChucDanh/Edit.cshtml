@@ -1,0 +1,16 @@
+﻿@model InternalRequest_Management.Models.ChucDanhVm
+@{
+    ViewData["Title"] = "Sửa chức danh";
+}
+<h3>Sửa chức danh</h3>
+
+<form asp-action="Edit" method="post" class="col-lg-5">
+    <input type="hidden" asp-for="MaChucDanh" />
+    <div class="mb-3">
+        <label asp-for="TenChucDanh" class="form-label"></label>
+        <input asp-for="TenChucDanh" class="form-control" autofocus />
+        <span asp-validation-for="TenChucDanh" class="text-danger"></span>
+    </div>
+    <button type="submit" class="btn btn-primary">Lưu</button>
+    <a asp-action="Index" class="btn btn-secondary">Hủy</a>
+</form>

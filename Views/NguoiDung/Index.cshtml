@@ -1,0 +1,90 @@
+﻿@model List<InternalRequest_Management.Models.NguoiDung>
+@{
+    ViewData["Title"] = "Người dùng và phân quyền";
+    var buocGan = (Dictionary<int, int>)ViewBag.BuocDuocGan;
+    var hoSoCho = (Dictionary<int, int>)ViewBag.HoSoDangCho;
+    int maToi = ViewBag.MaToi;
+}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">Người dùng và phân quyền</h3>
+    <a asp-action="Create" class="btn btn-primary">Thêm mới</a>
+</div>
+
+@if (TempData["ThongBao"] != null)
+{
+    <div class="alert alert-success">@TempData["ThongBao"]</div>
+}
+@if (TempData["Loi"] != null)
+{
+    <div class="alert alert-danger">@TempData["Loi"]</div>
+}
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-md-4">
+        <input name="tuKhoa" value="@ViewBag.TuKhoa" class="form-control" placeholder="Tìm theo tên đăng nhập, họ tên, email" />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Tìm</button>
+        <a asp-action="Index" class="btn btn-link">Xóa lọc</a>
+    </div>
+</form>
+
+<table class="table table-bordered align-middle">
+    <thead class="table-light">
+        <tr>
+            <th>Tên đăng nhập</th>
+            <th>Họ tên</th>
+            <th>Phòng ban</th>
+            <th>Chức danh</th>
+            <th>Vai trò</th>
+            <th>Trạng thái</th>
+            <th style="width:190px"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var u in Model)
+        {
+            int soBuoc = buocGan.TryGetValue(u.MaNguoiDung, out var b) ? b : 0;
+            int soHoSo = hoSoCho.TryGetValue(u.MaNguoiDung, out var h) ? h : 0;
+            string msg = u.TrangThai
+            ? ((soBuoc > 0 || soHoSo > 0)
+            ? $"Cảnh báo: tài khoản này đang được gán xử lý {soBuoc} bước trong quy trình đang áp dụng và đang có {soHoSo} đề nghị chờ xử lý. Bạn nên gán lại người xử lý cho các bước và đề nghị đó trước khi khóa. Vẫn khóa tài khoản?"
+            : "Khóa tài khoản này?")
+            : "Mở khóa tài khoản này?";
+            <tr class="@(u.TrangThai ? "" : "table-secondary")">
+                <td>@u.TenDangNhap</td>
+                <td>@u.HoTen<div class="small text-muted">@u.Email</div></td>
+                <td>@u.PhongBan?.TenPhongBan</td>
+                <td>@u.ChucDanh?.TenChucDanh</td>
+                <td>
+                    @foreach (var r in u.NguoiDungVaiTros)
+                    {
+                        <span class="badge bg-primary">@r.VaiTro?.TenVaiTro</span>
+                    }
+                </td>
+                <td>
+                    @if (u.TrangThai)
+                    {
+                        <span class="badge bg-success">Đang hoạt động</span>
+                    }
+                    else
+                    {
+
+                        <span class="badge bg-secondary">Đã khóa</span>
+                    }
+                </td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@u.MaNguoiDung" class="btn btn-sm btn-outline-primary">Sửa</a>
+                    @if (u.MaNguoiDung != maToi)
+                    {
+                        <form asp-action="DoiTrangThai" asp-route-id="@u.MaNguoiDung" method="post" class="d-inline" data-msg="@msg">
+                            <button type="submit" class="btn btn-sm @(u.TrangThai ? "btn-outline-danger" : "btn-outline-success")">
+                                @(u.TrangThai ? "Khóa" : "Mở khóa")
+                            </button>
+                        </form>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

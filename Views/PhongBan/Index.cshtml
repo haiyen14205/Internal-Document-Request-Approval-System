@@ -1,0 +1,86 @@
+﻿@model List<InternalRequest_Management.Models.PhongBanRow>
+@{
+    ViewData["Title"] = "Quản lý phòng ban";
+}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">Quản lý phòng ban</h3>
+    <a asp-action="Create" class="btn btn-primary">Thêm mới</a>
+</div>
+
+@if (TempData["ThongBao"] != null)
+{
+    <div class="banner banner-ok">@TempData["ThongBao"]</div>
+}
+@if (TempData["Loi"] != null)
+{
+    <div class="banner banner-bad">@TempData["Loi"]</div>
+}
+
+@if (Model.Count == 0)
+{
+    <div class="banner banner-info">Chưa có phòng ban nào.</div>
+}
+else
+{
+    <table class="table table-bordered align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Tên phòng ban</th>
+                <th>Cấp trên</th>
+                <th class="text-center">Số người</th>
+                <th class="text-center">Phòng ban con</th>
+                <th>Trạng thái</th>
+                <th style="width:240px"></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in Model)
+            {
+                var p = r.PhongBan;
+                string msg = p.TrangThai
+                ? ((r.SoNguoiHoatDong > 0 || r.SoConHoatDong > 0)
+                ? $"Phòng ban này đang có {r.SoNguoiHoatDong} người dùng hoạt động và {r.SoConHoatDong} phòng ban con còn hoạt động. Ngừng hoạt động thì không thể chọn phòng ban này cho người dùng mới, người dùng hiện tại vẫn giữ nguyên. Tiếp tục?"
+                : "Ngừng hoạt động phòng ban này?")
+                : "Bật lại phòng ban này?";
+                <tr class="@(p.TrangThai ? "" : "table-secondary")">
+                    <td style="padding-left:@(12 + r.Cap * 26)px">
+                        @if (r.Cap > 0)
+                        {
+                            <span class="text-muted">└ </span>
+                        }
+                        <strong>@p.TenPhongBan</strong>
+                    </td>
+                    <td>@r.TenCha</td>
+                    <td class="text-center">@r.SoNguoi</td>
+                    <td class="text-center">@r.SoCon</td>
+                    <td>
+                        @if (p.TrangThai)
+                        {
+                            <span class="badge bg-success">Đang hoạt động</span>
+                        }
+                        else
+                        {
+
+                            <span class="badge bg-secondary">Ngừng hoạt động</span>
+                        }
+                    </td>
+                    <td>
+                        <a asp-action="Edit" asp-route-id="@p.MaPhongBan" class="btn btn-sm btn-outline-primary">Sửa</a>
+                        <form asp-action="DoiTrangThai" asp-route-id="@p.MaPhongBan" method="post" class="d-inline" data-msg="@msg">
+                            <button type="submit" class="btn btn-sm @(p.TrangThai ? "btn-outline-danger" : "btn-outline-success")">
+                                @(p.TrangThai ? "Ngừng" : "Bật lại")
+                            </button>
+                        </form>
+                        @if (r.SoNguoi == 0 && r.SoCon == 0)
+                        {
+                            <form asp-action="Xoa" asp-route-id="@p.MaPhongBan" method="post" class="d-inline"
+                                  data-msg="Xóa vĩnh viễn phòng ban &quot;@p.TenPhongBan&quot;? Không thể hoàn tác.">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">Xóa</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

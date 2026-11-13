@@ -1,0 +1,85 @@
+﻿@model List<InternalRequest_Management.Models.BuocXuLyHoSo>
+@using InternalRequest_Management.Models
+@{
+    ViewData["Title"] = "Giám sát hồ sơ quá hạn";
+    var loaiList = (List<LoaiDeNghi>)ViewBag.LoaiList;
+    var now = DateTime.Now;
+}
+<h3 class="mb-3">Giám sát hồ sơ quá hạn</h3>
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <div class="display-6">@ViewBag.DangCho</div>
+                <div class="text-muted">Đang chờ duyệt</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center border-danger">
+            <div class="card-body">
+                <div class="display-6 text-danger">@ViewBag.SoQuaHan</div>
+                <div class="text-muted">Đã quá hạn</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center border-warning">
+            <div class="card-body">
+                <div class="display-6 text-warning">@ViewBag.SapHetHan</div>
+                <div class="text-muted">Sắp hết hạn (trong 4 giờ tới)</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-md-3">
+        <select name="maLoai" class="form-select">
+            <option value="">Tất cả loại đề nghị</option>
+            @foreach (var l in loaiList)
+            {
+                <option value="@l.MaLoai" selected="@(ViewBag.MaLoai == l.MaLoai)">@l.TenLoai</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto"><button type="submit" class="btn btn-primary">Lọc</button></div>
+</form>
+
+@if (Model.Count == 0)
+{
+    <div class="alert alert-success">Hiện không có hồ sơ nào quá hạn.</div>
+}
+else
+{
+    <table class="table table-bordered align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Số hồ sơ</th>
+                <th>Loại</th>
+                <th>Người đề nghị</th>
+                <th>Bước đang chờ</th>
+                <th>Người xử lý</th>
+                <th>Hạn xử lý</th>
+                <th>Đã trễ</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var b in Model)
+            {
+                var gioTre = (now - b.HanXuLy).TotalHours;
+                string hienTre = gioTre >= 24 ? $"{(int)(gioTre / 24)} ngày {(int)(gioTre % 24)} giờ" : $"{gioTre:0.0} giờ";
+                <tr>
+                    <td><a asp-controller="HoSoDeNghi" asp-action="Details" asp-route-id="@b.MaHoSo">@b.HoSoDeNghi?.SoHoSo</a></td>
+                    <td>@b.HoSoDeNghi?.LoaiDeNghi?.TenLoai</td>
+                    <td>@b.HoSoDeNghi?.NguoiDeNghi?.HoTen</td>
+                    <td>@b.BuocQuyTrinh?.TenBuoc</td>
+                    <td>@b.NguoiXuLy?.HoTen</td>
+                    <td>@b.HanXuLy.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td><span class="badge bg-danger">@hienTre</span></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

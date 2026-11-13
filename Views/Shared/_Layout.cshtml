@@ -1,0 +1,276 @@
+﻿@using System.Security.Claims
+@using Microsoft.EntityFrameworkCore
+@using InternalRequest_Management.Models
+@inject InternalRequest_Management.Data.ApplicationDbContext Db
+@{
+    var ctl = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    var act = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
+    var muc = Context.Request.Query["muc"].ToString();
+    bool dangNhap = User.Identity?.IsAuthenticated == true;
+    bool laDeNghi = User.IsInRole(TenVaiTro.NguoiDeNghi);
+    bool laPheDuyet = User.IsInRole(TenVaiTro.NguoiPheDuyet);
+    bool laQuanTri = User.IsInRole(TenVaiTro.QuanTriVien);
+    int maToi = 0;
+    int canXuLy = 0;
+    string hoTen = User.Identity?.Name ?? "";
+    string vaiTroText = string.Join(", ", User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value));
+
+    if (dangNhap)
+    {
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out maToi);
+        if (laPheDuyet)
+        {
+            canXuLy = await Db.BuocXuLyHoSos.CountAsync(b => b.MaNguoiDung == maToi
+                && b.ThoiDiemHoanTat == null && b.HoSoDeNghi!.TrangThai == TrangThaiHoSo.ChoDuyet);
+        }
+    }
+    string On(bool b) => b ? "active" : "";
+    bool trangDS = ctl == "HoSoDeNghi" && act == "Index";
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Phê duyệt đề nghị</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <header class="topbar">
+        @if (dangNhap)
+        {
+            <button type="button" id="sbToggle" class="icon-btn d-lg-none" aria-label="Menu">☰</button>
+        }
+        <a class="brand" asp-controller="Home" asp-action="Index">PHÊ DUYỆT NỘI BỘ</a>
+
+        @if (dangNhap)
+        {
+            <form method="get" asp-controller="HoSoDeNghi" asp-action="Index" class="quick-search">
+                <input type="text" name="tuKhoa" placeholder="Tìm nhanh đề nghị..." />
+            </form>
+
+            <div class="topbar-right">
+                <div class="dropdown" id="bellWrap" data-uid="@maToi" data-url="@Url.Action("Lay", "ThongBao")">
+                    <button type="button" class="bell bell-btn" id="bellBtn" data-bs-toggle="dropdown" aria-expanded="false" title="Thông báo">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22a2 2 0 0 0 2-2h-4a2 2 0 0 0 2 2zm6-6V11c0-3.07-1.63-5.64-4.5-6.32V4a1.5 1.5 0 0 0-3 0v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" /></svg>
+                        <span class="bell-badge d-none" id="bellBadge"></span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end notif-panel">
+                        <div class="notif-head">Thông báo</div>
+                        <div class="notif-list" id="notifList"><div class="notif-empty">Đang tải...</div></div>
+                        @if (laPheDuyet)
+                        {
+                            <a class="notif-foot" asp-controller="HoSoDeNghi" asp-action="Index" asp-route-muc="canxuly">Xem các đề nghị cần xử lý</a>
+                        }
+                    </div>
+                </div>
+                <div class="dropdown">
+                    <button class="user-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="avatar @UiHelper.AvatarClass(maToi)">@UiHelper.Initials(hoTen)</span>
+                        <span class="d-none d-md-block">
+                            <span class="u-name">@hoTen</span>
+                            <span class="u-role">@vaiTroText</span>
+                        </span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" asp-controller="TaiKhoan" asp-action="Index">Tài khoản của tôi</a></li>
+                        <li><hr class="dropdown-divider" /></li>
+                        <li>
+                            <form asp-controller="Account" asp-action="Logout" method="post">
+                                <button type="submit" class="dropdown-item">Đăng xuất</button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        }
+    </header>
+
+    @if (dangNhap)
+    {
+        <nav class="sidebar" id="sidebar">
+            @if (laDeNghi)
+            {
+                <a class="btn-create" asp-controller="HoSoDeNghi" asp-action="Create">+ TẠO ĐỀ NGHỊ MỚI</a>
+            }
+
+            <a class="side-link @On(ctl == "Home")" asp-controller="Home" asp-action="Index">Trang chủ</a>
+
+            <div class="side-title">Đề nghị</div>
+            @if (laDeNghi || laPheDuyet)
+            {
+                <a class="side-link @On(trangDS && muc != "canxuly" && muc != "tatca")" asp-controller="HoSoDeNghi" asp-action="Index" asp-route-muc="cuatoi">Đề nghị của tôi</a>
+            }
+            @if (laPheDuyet)
+            {
+                <a class="side-link @On(trangDS && muc == "canxuly")" asp-controller="HoSoDeNghi" asp-action="Index" asp-route-muc="canxuly">
+                    <span>Cần tôi xử lý</span>
+                    @if (canXuLy > 0)
+                    {
+                        <span class="side-badge">@canXuLy</span>
+                    }
+                </a>
+            }
+            @if (laQuanTri)
+            {
+                <a class="side-link @On(trangDS && muc == "tatca")" asp-controller="HoSoDeNghi" asp-action="Index" asp-route-muc="tatca">Tất cả đề nghị</a>
+            }
+
+            @if (laPheDuyet || laQuanTri)
+            {
+                <div class="side-title">Giám sát</div>
+                <a class="side-link @On(ctl == "GiamSat")" asp-controller="GiamSat" asp-action="QuaHan">Hồ sơ quá hạn</a>
+                <a class="side-link @On(ctl == "ThongKe")" asp-controller="ThongKe" asp-action="Index">Báo cáo và thống kê</a>
+            }
+
+            @if (laQuanTri)
+            {
+                <div class="side-title">Quản trị</div>
+                <a class="side-link @On(ctl == "NguoiDung")" asp-controller="NguoiDung" asp-action="Index">Người dùng và phân quyền</a>
+                <a class="side-link @On(ctl == "PhongBan")" asp-controller="PhongBan" asp-action="Index">Phòng ban</a>
+                <a class="side-link @On(ctl == "ChucDanh")" asp-controller="ChucDanh" asp-action="Index">Chức danh</a>
+                <a class="side-link @On(ctl == "LoaiDeNghi")" asp-controller="LoaiDeNghi" asp-action="Index">Loại đề nghị</a>
+                <a class="side-link @On(ctl == "QuyTrinhPheDuyet")" asp-controller="QuyTrinhPheDuyet" asp-action="Index">Quy trình phê duyệt</a>
+            }
+
+            <div class="side-title">Cá nhân</div>
+            <a class="side-link @On(ctl == "TaiKhoan")" asp-controller="TaiKhoan" asp-action="Index">Tài khoản của tôi</a>
+        </nav>
+    }
+
+    <main class="main">
+        <div class="main-inner">
+            @RenderBody()
+        </div>
+    </main>
+
+    <!-- Hộp xác nhận dùng chung cho mọi form có thuộc tính data-msg -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Xác nhận</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="confirmMsg"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy bỏ</button>
+                    <button type="button" class="btn btn-primary" id="confirmOk">Đồng ý</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (function () {
+            const tg = document.getElementById('sbToggle');
+            const sb = document.getElementById('sidebar');
+            if (tg && sb) tg.addEventListener('click', () => sb.classList.toggle('show'));
+
+            const el = document.getElementById('confirmModal');
+            const modal = new bootstrap.Modal(el);
+            let dangCho = null;
+            document.querySelectorAll('form[data-msg]').forEach(f => {
+                f.addEventListener('submit', e => {
+                    if (f.dataset.ok === '1') return;
+                    e.preventDefault();
+                    dangCho = f;
+                    document.getElementById('confirmMsg').textContent = f.dataset.msg;
+                    modal.show();
+                });
+            });
+            document.getElementById('confirmOk').addEventListener('click', () => {
+                if (dangCho) { dangCho.dataset.ok = '1'; modal.hide(); dangCho.submit(); }
+            });
+        })();
+    </script>
+    <script>
+        (function () {
+            const wrap = document.getElementById('bellWrap');
+            if (!wrap) return;
+            const key = 'tb_seen_' + wrap.dataset.uid;
+            const badge = document.getElementById('bellBadge');
+            const list = document.getElementById('notifList');
+            let items = [];
+
+            const layMoc = () => Number(localStorage.getItem(key) || 0);
+
+            function truoc(ms) {
+                const s = Math.floor((Date.now() - ms) / 1000);
+                if (s < 60) return 'vừa xong';
+                const m = Math.floor(s / 60);
+                if (m < 60) return m + ' phút trước';
+                const h = Math.floor(m / 60);
+                if (h < 24) return h + ' giờ trước';
+                const d = Math.floor(h / 24);
+                if (d < 30) return d + ' ngày trước';
+                return new Date(ms).toLocaleDateString('vi-VN');
+            }
+
+            const bieuTuong = { cho: '!', quahan: '!', duyet: '✓', tuchoi: '✕', chinhsua: '✎' };
+
+            function veBadge() {
+                const n = items.filter(x => x.t > layMoc()).length;
+                badge.textContent = n > 9 ? '9+' : n;
+                badge.classList.toggle('d-none', n === 0);
+            }
+
+            function veDanhSach(moc) {
+                list.innerHTML = '';
+                if (items.length === 0) {
+                    const e = document.createElement('div');
+                    e.className = 'notif-empty';
+                    e.textContent = 'Chưa có thông báo nào.';
+                    list.appendChild(e);
+                    return;
+                }
+                items.forEach(x => {
+                    const a = document.createElement('a');
+                    a.href = x.url;
+                    a.className = 'notif-item' + (x.t > moc ? ' unread' : '');
+
+                    const ico = document.createElement('div');
+                    ico.className = 'notif-ico ni-' + x.loai;
+                    ico.textContent = bieuTuong[x.loai] || '•';
+
+                    const body = document.createElement('div');
+                    body.className = 'notif-text';
+                    const t1 = document.createElement('div'); t1.textContent = x.text;
+                    const t2 = document.createElement('div'); t2.className = 'notif-sub'; t2.textContent = x.sub;
+                    const t3 = document.createElement('div'); t3.className = 'notif-time'; t3.textContent = truoc(x.t);
+                    body.append(t1, t2, t3);
+
+                    a.append(ico, body);
+                    list.appendChild(a);
+                });
+            }
+
+            async function tai() {
+                try {
+                    const r = await fetch(wrap.dataset.url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                    if (!r.ok) return;
+                    const j = await r.json();
+                    items = j.items || [];
+                    veBadge();
+                } catch (e) { }
+            }
+
+            // Mở chuông: tải mới, hiện danh sách (mục mới được tô xanh), rồi đánh dấu đã xem
+            wrap.addEventListener('show.bs.dropdown', async () => {
+                const mocCu = layMoc();
+                await tai();
+                veDanhSach(mocCu);
+                localStorage.setItem(key, String(Date.now()));
+                badge.classList.add('d-none');
+            });
+
+            tai();
+            setInterval(tai, 60000);
+        })();
+    </script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
